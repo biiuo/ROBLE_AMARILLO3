@@ -1,0 +1,131 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "React App Backend",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/user/register": {
+      "post": {
+        "summary": "Registrar un nuevo usuario",
+        "tags": ["USER"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "lastname": { "type": "string" },
+                  "username": { "type": "string" },
+                  "email": { "type": "string" },
+                  "password": { "type": "string" }
+                },
+                "required": ["name", "lastname", "username", "email", "password"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Usuario registrado correctamente"
+          },
+          "400": {
+            "description": "Error en validación"
+          }
+        }
+      }
+    },
+"/user/login": {
+  "post": {
+    "summary": "Iniciar sesión de usuario",
+    "tags": ["USER"],
+    "requestBody": {
+      "required": true,
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "identifier": {
+                "type": "string",
+                "description": "Email o nombre de usuario"
+              },
+              "password": {
+                "type": "string"
+              }
+            },
+            "required": ["identifier", "password"]
+          },
+          "example": {
+            "identifier": "mbella",
+            "password": "123456"
+          }
+        }
+      }
+    },
+    "responses": {
+      "200": {
+        "description": "Inicio de sesión exitoso"
+      },
+      "400": {
+        "description": "Credenciales inválidas"
+      }
+    }
+  }
+},
+
+    "/user/update/{identifier}": {
+      "put": {
+        "summary": "Actualizar usuario",
+        "tags": ["USER"],
+        "parameters": [
+          {
+            "name": "identifier",
+            "in": "path",
+            "required": true,
+            "description": "username o email del usuario a actualizar",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "lastname": { "type": "string" },
+                  "username": { "type": "string" },
+                  "email": { "type": "string", "format": "email" }
+                },
+                "description": "Enviar solo los campos que quieras actualizar"
+              },
+              "example": {
+                "name": "string",
+                "lastname": "string",
+                "username": "string",
+                "email": "string"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Usuario actualizado correctamente"
+          },
+          "400": {
+            "description": "Error en la actualización"
+          },
+          "404": {
+            "description": "Usuario no encontrado"
+          }
+        }
+      }
+    }
+  }
+}
