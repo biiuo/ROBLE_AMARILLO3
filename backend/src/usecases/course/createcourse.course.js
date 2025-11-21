@@ -1,37 +1,74 @@
 // usecases/course/createcourse.course.js
 import Course from "../../models/course.model.js";
 
-export const createCourse = async (courseData, user) => {
+
+
+export const createCourse = async (courseData, userId) => {
   try {
-    // Validar que el usuario tenga permisos
-    if (user.role !== 'admin' && user.role !== 'profesor') {
-      throw new Error('No tienes permisos para crear cursos');
+    console.log("🟡 [UseCase] Creando curso...", { courseData, userId });
+    
+    // Validaciones requeridas según tu schema
+    const requiredFields = ['title', 'description', 'category', 'duration', 'level'];
+    const missingFields = requiredFields.filter(field => !courseData[field]);
+    
+    if (missingFields.length > 0) {
+      throw new Error(`Campos obligatorios faltantes: ${missingFields.join(', ')}`);
     }
 
-    // Validar campos requeridos
-    const requiredFields = ['title', 'description', 'category', 'level', 'duration'];
-    for (const field of requiredFields) {
-      if (!courseData[field]) {
-        throw new Error(`El campo ${field} es requerido`);
-      }
+    // Validar longitud mínima del título
+    if (courseData.title.length < 3) {
+      throw new Error('El título debe tener al menos 3 caracteres');
     }
 
-    // Crear el curso con el usuario que lo crea
+    // Validar categoría (según tu enum)
+    const validCategories = [
+      "web-development", "mobile-development", "data-science", 
+      "artificial-intelligence", "cybersecurity", "cloud-computing", 
+      "devops", "programming-fundamentals", "database", 
+      "ui-ux-design", "game-development", "blockchain"
+    ];
+    
+    if (!validCategories.includes(courseData.category)) {
+      throw new Error('Categoría no válida');
+    }
+
+    // Validar nivel
+    const validLevels = ["beginner", "intermediate", "advanced"];
+    if (!validLevels.includes(courseData.level)) {
+      throw new Error('Nivel no válido');
+    }
+
+    // Crear el curso
     const course = new Course({
-      ...courseData,
-      createdBy: user._id
+      title: courseData.title,
+      description: courseData.description,
+      category: courseData.category,
+      price: courseData.price || 0,
+      duration: courseData.duration,
+      level: courseData.level,
+      isPublished: courseData.isPublished || false,
+      image: courseData.image || '',
+      imagePublicId: courseData.imagePublicId || '',
+      createdBy: userId,
+      lessons: courseData.lessons || []
     });
 
     await course.save();
     
-    // Poblar la información del creador
-    await course.populate('createdBy', 'name username email');
-
+    console.log("✅ [UseCase] Curso creado exitosamente:", course._id);
+    
     return {
       success: true,
-      course
+      message: "Curso creado exitosamente",
+      course: course
     };
+    
   } catch (error) {
-    throw error;
+    console.error("❌ [UseCase] Error creando curso:", error);
+    return {
+      success: false,
+      message: error.message || "Error al crear el curso",
+      error: error.message
+    };
   }
 };

@@ -31,15 +31,15 @@ export default function AdminPanel({ user, onNavigate }) {
       ]);
 
       if (coursesResult.ok) {
-        setCourses(coursesResult.data.courses || coursesResult.data || []);
+        setCourses(coursesResult.data?.courses || coursesResult.data || []);
       } else {
-        setError(coursesResult.error);
+        setError(coursesResult.error || "Error cargando cursos");
       }
 
       if (statsResult.ok) {
-        setStats(statsResult.data.stats);
+        setStats(statsResult.data?.stats || statsResult.data);
       } else {
-        setError(statsResult.error);
+        setError(statsResult.error || "Error cargando estadísticas");
       }
 
     } catch (err) {
@@ -54,9 +54,9 @@ export default function AdminPanel({ user, onNavigate }) {
     try {
       const result = await apiGetAllUsers();
       if (result.ok) {
-        setUsers(result.data.users || result.data || []);
+        setUsers(result.data?.users || result.data || []);
       } else {
-        setError(result.error);
+        setError(result.error || "Error cargando usuarios");
       }
     } catch (err) {
       console.error("Error loading users:", err);
@@ -73,11 +73,11 @@ export default function AdminPanel({ user, onNavigate }) {
         setEditingCourse(null);
         return true;
       } else {
-        setError(result.error);
+        setError(result.error || "Error creando curso");
         return false;
       }
     } catch (err) {
-      setError("Error creando curso" + err.message);
+      setError("Error creando curso: " + err.message);
       return false;
     }
   };
@@ -91,11 +91,11 @@ export default function AdminPanel({ user, onNavigate }) {
         setEditingCourse(null);
         return true;
       } else {
-        setError(result.error);
+        setError(result.error || "Error actualizando curso");
         return false;
       }
     } catch (err) {
-      setError("Error actualizando curso" + err.message);
+      setError("Error actualizando curso: " + err.message);
       return false;
     }
   };
@@ -111,11 +111,11 @@ export default function AdminPanel({ user, onNavigate }) {
         await loadInitialData();
         return true;
       } else {
-        setError(result.error);
+        setError(result.error || "Error eliminando curso");
         return false;
       }
     } catch (err) {
-      setError("Error eliminando curso" + err.message);
+      setError("Error eliminando curso: " + err.message);
       return false;
     }
   };
@@ -128,11 +128,11 @@ export default function AdminPanel({ user, onNavigate }) {
         setEditingUser(null);
         return true;
       } else {
-        setError(result.error);
+        setError(result.error || "Error creando usuario");
         return false;
       }
     } catch (err) {
-      setError("Error creando usuario" + err.message);
+      setError("Error creando usuario: " + err.message);
       return false;
     }
   };
@@ -145,11 +145,11 @@ export default function AdminPanel({ user, onNavigate }) {
         setEditingUser(null);
         return true;
       } else {
-        setError(result.error);
+        setError(result.error || "Error actualizando usuario");
         return false;
       }
     } catch (err) {
-      setError("Error actualizando usuario" + err.message);
+      setError("Error actualizando usuario: " + err.message);
       return false;
     }
   };
@@ -165,11 +165,11 @@ export default function AdminPanel({ user, onNavigate }) {
         await loadUsers();
         return true;
       } else {
-        setError(result.error);
+        setError(result.error || "Error eliminando usuario");
         return false;
       }
     } catch (err) {
-      setError("Error eliminando usuario" + err.message);
+      setError("Error eliminando usuario: " + err.message);
       return false;
     }
   };
@@ -282,12 +282,18 @@ export default function AdminPanel({ user, onNavigate }) {
               </svg>
               {error}
             </div>
+            <button 
+              onClick={() => setError("")}
+              className="mt-2 text-sm text-red-600 hover:text-red-800"
+            >
+              Cerrar
+            </button>
           </div>
         )}
 
         {/* Renderizar contenido según la pestaña activa */}
         {activeTab === "dashboard" && (
-          <DashboardStats stats={stats} courses={courses} users={users} />
+          <DashboardStats stats={stats} courses={courses} />
         )}
 
         {activeTab === "courses" && (

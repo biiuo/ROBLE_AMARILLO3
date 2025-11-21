@@ -33,8 +33,14 @@ export const courseController = {
         courseData.lessons = JSON.parse(courseData.lessons);
       }
 
+       console.log("📥 BODY RECIBIDO EN BACKEND:", req.body);
+      console.log("📸 IMAGEN RECIBIDA:", req.file);
+      console.log("🧑‍🏫 USER AUTH:", req.user);
+
       const result = await createCourse(courseData, req.user);
-      
+      console.log("BODY RECIBIDO:", result);
+
+     
       res.status(201).json({
         success: true,
         message: "Curso creado correctamente",
@@ -125,10 +131,10 @@ export const courseController = {
     }
   },
 
-  getCourses: async (req, res) => {
+  getCourseseuser: async (req, res) => {
     try {
       const result = await getCourses(req.query);
-      
+    
       res.json({
         success: true,
         courses: result.courses

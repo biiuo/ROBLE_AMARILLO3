@@ -20,6 +20,7 @@ export default function MyCourses({ user, onNavigate }) {
       if (result.ok) {
         // Manejar diferentes estructuras de respuesta
         const coursesData = result.data.courses || result.data || [];
+        console.log("Datos de cursos recibidos:", coursesData);
         setMyCourses(coursesData);
       } else {
         setError(result.error || "Error al cargar tus cursos");

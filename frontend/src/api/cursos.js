@@ -45,10 +45,13 @@ const apiRequest = async (endpoint, options = {}) => {
 };
 
 // CURSOS
+
 export const apiGetCourses = async (filters = {}) => {
   const queryParams = new URLSearchParams(filters).toString();
+  console.log("📦 Cursos:", queryParams);
   return await apiRequest(`/course/getcourses${queryParams ? `?${queryParams}` : ''}`);
 };
+
 
 export const apiGetAllCourses = async () => {
   return await apiRequest('/course/admin/all-courses');

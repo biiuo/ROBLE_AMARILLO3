@@ -7,6 +7,8 @@ import { swaggerConfig } from "../config/swagger.js";
 import connectDB from "../config/db.js";
 import userRoutes from "../routes/user.routes.js";
 import courseRoutes from "../routes/course.routes.js";
+import adminRoutes from "../routes/admin.js";
+import uploadRoutes from "../routes/upload.route.js";
 //import purchaseRoutes from "../routes/purchase.routes.js";
 //import certificateRoutes from "../routes/certificate.routes.js";
 
@@ -20,6 +22,8 @@ swaggerConfig(app);
 // Rutas
 app.use("/user", userRoutes);
 app.use("/course", courseRoutes);
+app.use("/admin", adminRoutes);
+app.use("/upload", uploadRoutes);
 
 //app.use("/courses", courseRoutes);
 //app.use("/purchases", purchaseRoutes);

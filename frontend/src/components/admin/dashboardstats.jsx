@@ -8,31 +8,55 @@ export default function DashboardStats({ stats, courses }) {
     );
   }
 
+  // Datos seguros con valores por defecto y cálculos protegidos
+  const safeStats = {
+    totalCourses: stats.totalCourses || 0,
+    totalUsers: stats.totalUsers || 0,
+    totalEnrollments: stats.totalEnrollments || 0,
+    publishedCourses: stats.publishedCourses || 0,
+    pendingCourses: stats.pendingCourses || 0
+  };
+
+  // Cálculos seguros para evitar divisiones por cero
+  const publicationRate = safeStats.totalCourses > 0 
+    ? Math.round((safeStats.publishedCourses / safeStats.totalCourses) * 100) 
+    : 0;
+
+  const enrollmentsPerUser = safeStats.totalUsers > 0 
+    ? Math.round(safeStats.totalEnrollments / safeStats.totalUsers) 
+    : 0;
+
+  const enrollmentsPerCourse = safeStats.totalCourses > 0 
+    ? Math.round(safeStats.totalEnrollments / safeStats.totalCourses) 
+    : 0;
+
+  const coursesWithLessons = courses.filter(c => c.lessons?.length > 0).length;
+
   const statCards = [
     {
       title: "Total Cursos",
-      value: stats.totalCourses || 0,
+      value: safeStats.totalCourses,
       icon: "📚",
       color: "blue",
-      description: `${stats.publishedCourses || 0} publicados, ${(stats.totalCourses || 0) - (stats.publishedCourses || 0)} borradores`
+      description: `${safeStats.publishedCourses} publicados, ${safeStats.pendingCourses} borradores`
     },
     {
       title: "Total Usuarios",
-      value: stats.totalUsers || 0,
+      value: safeStats.totalUsers,
       icon: "👥",
       color: "green",
       description: "Usuarios registrados"
     },
     {
       title: "Inscripciones",
-      value: stats.totalEnrollments || 0,
+      value: safeStats.totalEnrollments,
       icon: "🎓",
       color: "yellow",
       description: "Total de inscripciones"
     },
     {
       title: "Cursos Publicados",
-      value: stats.publishedCourses || 0,
+      value: safeStats.publishedCourses,
       icon: "✅",
       color: "green",
       description: "Cursos disponibles"
@@ -48,11 +72,6 @@ export default function DashboardStats({ stats, courses }) {
     };
     return colors[color] || colors.blue;
   };
-
-  const publishedCourses = stats.publishedCourses || 0;
-  const totalCourses = stats.totalCourses || 1; // Evitar división por cero
-  const totalEnrollments = stats.totalEnrollments || 0;
-  const totalUsers = stats.totalUsers || 1;
 
   return (
     <div>
@@ -85,7 +104,7 @@ export default function DashboardStats({ stats, courses }) {
         <div className="bg-white rounded-xl shadow-sm border p-6">
           <h3 className="text-lg font-semibold text-gray-800 mb-4">Cursos Recientes</h3>
           <div className="space-y-3">
-            {courses.slice(0, 5).map((course) => (
+            {courses && courses.slice(0, 5).map((course) => (
               <div key={course._id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                 <div className="flex-1">
                   <p className="font-medium text-gray-800 text-sm line-clamp-1">{course.title}</p>
@@ -102,7 +121,7 @@ export default function DashboardStats({ stats, courses }) {
                 </span>
               </div>
             ))}
-            {courses.length === 0 && (
+            {(!courses || courses.length === 0) && (
               <p className="text-gray-500 text-center py-4">No hay cursos creados</p>
             )}
           </div>
@@ -115,12 +134,12 @@ export default function DashboardStats({ stats, courses }) {
             <div>
               <div className="flex justify-between text-sm text-gray-600 mb-1">
                 <span>Cursos Publicados</span>
-                <span>{publishedCourses} / {totalCourses}</span>
+                <span>{safeStats.publishedCourses} / {safeStats.totalCourses}</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div 
                   className="bg-green-500 h-2 rounded-full" 
-                  style={{ width: `${(publishedCourses / totalCourses) * 100}%` }}
+                  style={{ width: `${publicationRate}%` }}
                 ></div>
               </div>
             </div>
@@ -128,12 +147,12 @@ export default function DashboardStats({ stats, courses }) {
             <div>
               <div className="flex justify-between text-sm text-gray-600 mb-1">
                 <span>Tasa de Inscripción</span>
-                <span>{Math.round(totalEnrollments / totalUsers)} por usuario</span>
+                <span>{enrollmentsPerUser} por usuario</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div 
                   className="bg-blue-500 h-2 rounded-full" 
-                  style={{ width: `${Math.min((totalEnrollments / (totalUsers * 3)) * 100, 100)}%` }}
+                  style={{ width: `${Math.min(enrollmentsPerUser * 10, 100)}%` }}
                 ></div>
               </div>
             </div>
@@ -141,12 +160,12 @@ export default function DashboardStats({ stats, courses }) {
             <div>
               <div className="flex justify-between text-sm text-gray-600 mb-1">
                 <span>Ocupación de Cursos</span>
-                <span>{Math.round(totalEnrollments / totalCourses)} inscripciones/curso</span>
+                <span>{enrollmentsPerCourse} inscripciones/curso</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div 
                   className="bg-yellow-500 h-2 rounded-full" 
-                  style={{ width: `${Math.min((totalEnrollments / (totalCourses * 10)) * 100, 100)}%` }}
+                  style={{ width: `${Math.min(enrollmentsPerCourse * 10, 100)}%` }}
                 ></div>
               </div>
             </div>
@@ -155,11 +174,11 @@ export default function DashboardStats({ stats, courses }) {
           {/* Información Adicional */}
           <div className="mt-6 grid grid-cols-2 gap-4">
             <div className="text-center p-3 bg-blue-50 rounded-lg">
-              <div className="text-lg font-bold text-blue-600">{totalCourses}</div>
+              <div className="text-lg font-bold text-blue-600">{safeStats.totalCourses}</div>
               <div className="text-xs text-blue-700">Total Cursos</div>
             </div>
             <div className="text-center p-3 bg-green-50 rounded-lg">
-              <div className="text-lg font-bold text-green-600">{totalUsers}</div>
+              <div className="text-lg font-bold text-green-600">{safeStats.totalUsers}</div>
               <div className="text-xs text-green-700">Total Usuarios</div>
             </div>
           </div>
@@ -169,19 +188,19 @@ export default function DashboardStats({ stats, courses }) {
       {/* Estadísticas Rápidas */}
       <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white p-4 rounded-lg border text-center">
-          <div className="text-2xl font-bold text-purple-600">{Math.round((publishedCourses / totalCourses) * 100)}%</div>
+          <div className="text-2xl font-bold text-purple-600">{publicationRate}%</div>
           <div className="text-sm text-gray-600">Tasa de Publicación</div>
         </div>
         <div className="bg-white p-4 rounded-lg border text-center">
-          <div className="text-2xl font-bold text-blue-600">{Math.round(totalEnrollments / totalUsers)}</div>
+          <div className="text-2xl font-bold text-blue-600">{enrollmentsPerUser}</div>
           <div className="text-sm text-gray-600">Promedio Inscripciones</div>
         </div>
         <div className="bg-white p-4 rounded-lg border text-center">
-          <div className="text-2xl font-bold text-green-600">{Math.round(totalEnrollments / totalCourses)}</div>
+          <div className="text-2xl font-bold text-green-600">{enrollmentsPerCourse}</div>
           <div className="text-sm text-gray-600">Inscripciones por Curso</div>
         </div>
         <div className="bg-white p-4 rounded-lg border text-center">
-          <div className="text-2xl font-bold text-yellow-600">{courses.filter(c => c.lessons?.length > 0).length}</div>
+          <div className="text-2xl font-bold text-yellow-600">{coursesWithLessons}</div>
           <div className="text-sm text-gray-600">Cursos con Lecciones</div>
         </div>
       </div>

@@ -1,10 +1,17 @@
 import { useState, useEffect, useCallback } from "react";
-import { apiGetCourses, apiEnrollCourse, apiGetMyCourses } from "../../api/cursos";
+import {
+  apiGetCourses,
+  apiEnrollCourse,
+  apiGetMyCourses,
+} from "../../api/cursos";
 import {
   CATEGORIES,
   getCategoryLabel,
   getCategoryIcon,
 } from "../../utils/categories";
+
+// Importar la URL base de la API
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 export default function CourseCatalog({ user, onNavigate }) {
   const [courses, setCourses] = useState([]);
@@ -17,16 +24,158 @@ export default function CourseCatalog({ user, onNavigate }) {
     level: "",
     search: "",
   });
+  const [imageErrors, setImageErrors] = useState({});
 
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [authView, setAuthView] = useState("login"); // "login" | "register"
+  const [authView, setAuthView] = useState("login");
   const [selectedCourse, setSelectedCourse] = useState(null);
+  const [enrolledCourses, setEnrolledCourses] = useState(new Set());
+
+  // Función helper para obtener la URL completa de la imagen
+  const getImageUrl = (imagePath) => {
+    console.log("🔄 Procesando imagen:", imagePath);
+
+    if (!imagePath) {
+      console.log("❌ No hay imagePath");
+      return null;
+    }
+
+    // Si la imagen ya es una URL completa (http/https), devolverla tal cual
+    if (imagePath.startsWith("http://") || imagePath.startsWith("https://")) {
+      console.log("✅ URL completa, devolviendo tal cual");
+      return imagePath;
+    }
+
+    // Si es una ruta de Cloudinary (empieza con /v o contiene cloudinary)
+    if (imagePath.includes("cloudinary") || imagePath.startsWith("/v")) {
+      // Asegurar que tenga el protocolo
+      if (!imagePath.startsWith("http")) {
+        return `https://res.cloudinary.com${
+          imagePath.startsWith("/") ? "" : "/"
+        }${imagePath}`;
+      }
+      return imagePath;
+    }
+
+    // Para rutas locales del servidor
+    let cleanPath = imagePath.startsWith("/") ? imagePath : `/${imagePath}`;
+
+    // Remover slash duplicado si existe
+    if (cleanPath.startsWith("//")) {
+      cleanPath = cleanPath.substring(1);
+    }
+
+    const fullUrl = `${API_BASE_URL}${cleanPath}`;
+    console.log("🔗 URL construida:", fullUrl);
+
+    return fullUrl;
+  };
+
+  const handleImageError = (courseId) => {
+    console.log("❌ Error cargando imagen para curso:", courseId);
+    setImageErrors((prev) => ({
+      ...prev,
+      [courseId]: true,
+    }));
+  };
+
+  // Cargar cursos inscritos cuando el usuario cambie
+  useEffect(() => {
+    if (user) {
+      loadEnrolledCourses();
+    }
+  }, [user]);
+
+  const loadEnrolledCourses = async () => {
+    try {
+      const result = await apiGetMyCourses();
+      if (result.ok) {
+        const enrolledIds =
+          result.data?.courses?.map((course) => course._id) || [];
+        setEnrolledCourses(new Set(enrolledIds));
+      }
+    } catch (error) {
+      console.error("Error loading enrolled courses:", error);
+    }
+  };
+
+  // Función para verificar si un curso está inscrito
+  const isCourseEnrolled = (courseId) => {
+    return enrolledCourses.has(courseId);
+  };
+
+  // FUNCIÓN HANDLE ENROLL CORREGIDA (sin duplicados)
+  const handleEnroll = async (courseId) => {
+    if (!user) {
+      setSelectedCourse(courseId);
+      setAuthView("login");
+      setShowAuthModal(true);
+      return;
+    }
+
+    setEnrolling(courseId);
+    try {
+      const result = await apiEnrollCourse(courseId);
+      if (result.ok) {
+        // Actualizar el estado local de cursos inscritos
+        setEnrolledCourses((prev) => new Set([...prev, courseId]));
+
+        // También actualizar el estado de courses
+        setCourses((prevCourses) =>
+          prevCourses.map((course) =>
+            course._id === courseId ? { ...course, isEnrolled: true } : course
+          )
+        );
+      } else {
+        alert(result.error || "Error al inscribirse en el curso");
+      }
+    } catch (err) {
+      alert("Error de conexión al inscribirse: " + err.message);
+    } finally {
+      setEnrolling(null);
+    }
+  };
 
   useEffect(() => {
     loadCourses();
   }, [user]);
 
-  // Usar useCallback para memoizar la función filterCourses
+  // Función para verificar si la imagen es accesible
+  const checkImageAvailability = async (imageUrl) => {
+    if (!imageUrl) return false;
+
+    try {
+      const response = await fetch(imageUrl, { method: "HEAD" });
+      return response.ok;
+    } catch (error) {
+      console.log("❌ Imagen no accesible:", imageUrl);
+      console.error(error);
+      return false;
+    }
+  };
+
+  useEffect(() => {
+    // Verificar disponibilidad de imágenes cuando se cargan los cursos
+    const verifyImages = async () => {
+      for (const course of courses) {
+        if (course.image) {
+          const imageUrl = getImageUrl(course.image);
+          const isAvailable = await checkImageAvailability(imageUrl);
+          if (!isAvailable) {
+            setImageErrors((prev) => ({
+              ...prev,
+              [course._id]: true,
+            }));
+          }
+        }
+      }
+    };
+
+    if (courses.length > 0) {
+      verifyImages();
+    }
+  }, [courses]);
+
   const filterCourses = useCallback(() => {
     let filtered = courses;
 
@@ -65,26 +214,40 @@ export default function CourseCatalog({ user, onNavigate }) {
 
       if (result.ok) {
         const raw = result.data;
-        
+
         const coursesData = Array.isArray(raw?.courses)
           ? raw.courses
           : Array.isArray(raw)
           ? raw
           : [];
 
+        console.log("📦 Cursos cargados:", coursesData.length);
+        console.log(
+          "🖼️ Primer curso:",
+          coursesData[0]
+            ? {
+                title: coursesData[0].title,
+                image: coursesData[0].image,
+                imageUrl: getImageUrl(coursesData[0].image),
+              }
+            : "No hay cursos"
+        );
+
         // Si el usuario está logueado, cargar información de inscripción
         if (user) {
           const myCoursesResult = await apiGetMyCourses();
           if (myCoursesResult.ok) {
-            const enrolledCourseIds = myCoursesResult.data?.courses?.map(course => course._id) || [];
-            
-            // Marcar cursos como inscritos
-            const coursesWithEnrollment = coursesData.map(course => ({
+            const enrolledCourseIds =
+              myCoursesResult.data?.courses?.map((course) => course._id) || [];
+
+            const coursesWithEnrollment = coursesData.map((course) => ({
               ...course,
-              isEnrolled: enrolledCourseIds.includes(course._id)
+              isEnrolled: enrolledCourseIds.includes(course._id),
             }));
-            
+
             setCourses(coursesWithEnrollment);
+            // También actualizar enrolledCourses
+            setEnrolledCourses(new Set(enrolledCourseIds));
           } else {
             setCourses(coursesData);
           }
@@ -103,46 +266,15 @@ export default function CourseCatalog({ user, onNavigate }) {
   };
 
   const handleFilterChange = (filterName, value) => {
-    setFilters(prev => ({
+    setFilters((prev) => ({
       ...prev,
-      [filterName]: value
+      [filterName]: value,
     }));
-  };
-
-  const handleEnroll = async (courseId) => {
-    if (!user) {
-      setSelectedCourse(courseId);
-      setAuthView("login");
-      setShowAuthModal(true);
-      return;
-    }
-
-    setEnrolling(courseId);
-    try {
-      const result = await apiEnrollCourse(courseId);
-      if (result.ok) {
-        // Actualizar el estado del curso como inscrito
-        setCourses(prevCourses => 
-          prevCourses.map(course => 
-            course._id === courseId 
-              ? { ...course, isEnrolled: true }
-              : course
-          )
-        );
-      } else {
-        alert(result.error || "Error al inscribirse en el curso");
-      }
-    } catch (err) {
-      alert("Error de conexión al inscribirse: " + err.message);
-    } finally {
-      setEnrolling(null);
-    }
   };
 
   const handleLoginSuccess = () => {
     setShowAuthModal(false);
     if (selectedCourse) {
-      // Una vez logueado, inscribir al curso automáticamente
       handleEnroll(selectedCourse);
     }
   };
@@ -272,7 +404,6 @@ export default function CourseCatalog({ user, onNavigate }) {
           </h3>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Filtro por categoría */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Categoría
@@ -291,7 +422,6 @@ export default function CourseCatalog({ user, onNavigate }) {
               </select>
             </div>
 
-            {/* Filtro por nivel */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Nivel
@@ -308,7 +438,6 @@ export default function CourseCatalog({ user, onNavigate }) {
               </select>
             </div>
 
-            {/* Búsqueda */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Buscar
@@ -363,16 +492,32 @@ export default function CourseCatalog({ user, onNavigate }) {
               const isEnrolling = enrolling === course._id;
 
               return (
-                <div key={course._id} className="bg-white rounded-xl shadow-sm border overflow-hidden hover:shadow-md transition-shadow">
+                <div
+                  key={course._id}
+                  className="bg-white rounded-xl shadow-sm border overflow-hidden hover:shadow-md transition-shadow"
+                >
                   {/* Imagen del curso */}
-                  <div
-                    className="h-48 relative bg-cover bg-center"
-                    style={{
-                      backgroundImage: course.image
-                        ? `url(${course.image})`
-                        : "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
-                    }}
-                  >
+                  <div className="h-48 relative overflow-hidden">
+                    {course.image && !imageErrors[course._id] ? (
+                      <img
+                        src={getImageUrl(course.image)}
+                        alt={course.title}
+                        className="w-full h-full object-cover"
+                        onError={() => handleImageError(course._id)}
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-r from-yellow-400 to-yellow-500 flex items-center justify-center">
+                        <svg
+                          className="w-16 h-16 text-white opacity-80"
+                          fill="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path d="M12 3L1 9l11 6 9-4.91V17h2V9M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z" />
+                        </svg>
+                      </div>
+                    )}
+
                     <div className="absolute inset-0 bg-black bg-opacity-20"></div>
                     <div className="absolute top-4 left-4">
                       <span
@@ -387,17 +532,6 @@ export default function CourseCatalog({ user, onNavigate }) {
                         {getCategoryLabel(course.category)}
                       </span>
                     </div>
-                    {!course.image && (
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <svg
-                          className="w-16 h-16 text-white opacity-80"
-                          fill="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path d="M12 3L1 9l11 6 9-4.91V17h2V9M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z" />
-                        </svg>
-                      </div>
-                    )}
                   </div>
 
                   <div className="p-6">
@@ -424,9 +558,11 @@ export default function CourseCatalog({ user, onNavigate }) {
 
                     <button
                       onClick={() => handleEnroll(course._id)}
-                      disabled={isEnrolling || (user && course.isEnrolled)}
+                      disabled={
+                        isEnrolling || (user && isCourseEnrolled(course._id))
+                      }
                       className={`w-full py-3 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                        user && course.isEnrolled
+                        user && isCourseEnrolled(course._id)
                           ? "bg-green-500 text-white hover:bg-green-600"
                           : "bg-yellow-500 text-white hover:bg-yellow-600"
                       }`}
@@ -436,10 +572,21 @@ export default function CourseCatalog({ user, onNavigate }) {
                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                           Inscribiendo...
                         </div>
-                      ) : user && course.isEnrolled ? (
-                        "✅ Inscrito"
-                      ) : !user ? (
-                        "Inscribirse en el curso"
+                      ) : user && isCourseEnrolled(course._id) ? (
+                        <div className="flex items-center justify-center">
+                          <svg
+                            className="w-5 h-5 mr-2"
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                          Inscrito
+                        </div>
                       ) : (
                         "Inscribirse en el curso"
                       )}
@@ -496,8 +643,18 @@ export default function CourseCatalog({ user, onNavigate }) {
               onClick={() => setShowAuthModal(false)}
               className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
             >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
             </button>
 
@@ -506,8 +663,8 @@ export default function CourseCatalog({ user, onNavigate }) {
                 {authView === "login" ? "Iniciar Sesión" : "Crear Cuenta"}
               </h2>
               <p className="text-gray-600 mb-6">
-                {authView === "login" 
-                  ? "Inicia sesión para inscribirte en este curso" 
+                {authView === "login"
+                  ? "Inicia sesión para inscribirte en este curso"
                   : "Crea una cuenta para comenzar tu aprendizaje"}
               </p>
 

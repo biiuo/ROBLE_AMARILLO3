@@ -16,25 +16,28 @@ export const getCourses = async (filters = {}) => {
       ];
     }
     
-     console.log("📋 Query construido:", query);
+    console.log("📋 Query construido:", query);
 
     const courses = await Course.find(query)
+      .select('title description category level image duration price isPublished createdBy lessons createdAt') // Selecciona explícitamente los campos
       .populate('createdBy', 'name username')
       .sort({ createdAt: -1 });
       
-   console.log("✅ Cursos encontrados:", courses.length);
+    console.log("✅ Cursos encontrados:", courses.length);
     console.log("📦 Primer curso:", courses[0] ? {
       _id: courses[0]._id,
       title: courses[0].title,
       category: courses[0].category,
       level: courses[0].level,
+      image: courses[0].image, // ← Ahora debería aparecer
       isPublished: courses[0].isPublished
     } : "No hay cursos");
     
-    return {
+    return ({
       success: true,
       courses
-    };
+    });
+
   } catch (error) {
     console.error("Error getting courses:", error);
     throw error;
@@ -44,6 +47,7 @@ export const getCourses = async (filters = {}) => {
 export const getCourseById = async (courseId) => {
   try {
     const course = await Course.findById(courseId)
+      .select('title description category level image duration price isPublished createdBy lessons') // Incluye image
       .populate('createdBy', 'name username email');
 
     if (!course) {
