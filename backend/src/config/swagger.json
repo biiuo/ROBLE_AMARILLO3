@@ -17,9 +17,10 @@
                 "type": "object",
                 "properties": {
                   "name": { "type": "string" },
+                  "ID": { "type": "number" },
                   "lastname": { "type": "string" },
                   "username": { "type": "string" },
-                  "email": { "type": "string" },
+                  "email": { "type": "string", "format": "email" },
                   "password": { "type": "string" }
                 },
                 "required": ["name", "lastname", "username", "email", "password"]
@@ -28,71 +29,66 @@
           }
         },
         "responses": {
-          "201": {
-            "description": "Usuario registrado correctamente"
-          },
-          "400": {
-            "description": "Error en validación"
-          }
+          "201": { "description": "Usuario registrado correctamente" },
+          "400": { "description": "Error en validación" }
         }
       }
     },
-"/user/login": {
-  "post": {
-    "summary": "Iniciar sesión de usuario",
-    "tags": ["USER"],
-    "requestBody": {
-      "required": true,
-      "content": {
-        "application/json": {
-          "schema": {
-            "type": "object",
-            "properties": {
-              "identifier": {
-                "type": "string",
-                "description": "Email o nombre de usuario"
+
+    "/user/login": {
+      "post": {
+        "summary": "Iniciar sesión de usuario",
+        "tags": ["USER"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "identifier": {
+                    "type": "string",
+                    "description": "Email o nombre de usuario"
+                  },
+                  "password": { "type": "string" }
+                },
+                "required": ["identifier", "password"]
               },
-              "password": {
-                "type": "string"
+              "example": {
+                "identifier": "mbella",
+                "password": "123456"
               }
-            },
-            "required": ["identifier", "password"]
-          },
-          "example": {
-            "identifier": "mbella",
-            "password": "123456"
+            }
           }
+        },
+        "responses": {
+          "200": { "description": "Inicio de sesión exitoso" },
+          "400": { "description": "Credenciales inválidas" }
         }
       }
     },
-    "responses": {
-      "200": {
-        "description": "Inicio de sesión exitoso"
-      },
-      "400": {
-        "description": "Credenciales inválidas"
-      }
-    }
-  }
-},
 
     "/user/update/{identifier}": {
       "put": {
         "summary": "Actualizar usuario",
         "tags": ["USER"],
+        "security": [{ "bearerAuth": [] }],
         "parameters": [
           {
             "name": "identifier",
             "in": "path",
             "required": true,
-            "description": "username o email del usuario a actualizar",
+            "description": "ID (número), username o email del usuario",
             "schema": {
-              "type": "string"
+              "oneOf": [
+                { "type": "string" },
+                { "type": "number" }
+              ]
             }
           }
         ],
         "requestBody": {
-          "required": false,
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
@@ -103,26 +99,408 @@
                   "username": { "type": "string" },
                   "email": { "type": "string", "format": "email" }
                 },
-                "description": "Enviar solo los campos que quieras actualizar"
+                "description": "Enviar solo los campos que se desean actualizar"
               },
               "example": {
-                "name": "string",
-                "lastname": "string",
-                "username": "string",
-                "email": "string"
+                "name": "NuevoNombre",
+                "lastname": "NuevoApellido",
+                "username": "nuevoUser",
+                "email": "nuevo@correo.com"
               }
             }
           }
         },
         "responses": {
-          "200": {
-            "description": "Usuario actualizado correctamente"
+          "200": { "description": "Usuario actualizado correctamente" },
+          "400": { "description": "Error en la actualización" },
+          "404": { "description": "Usuario no encontrado" }
+        }
+      }
+    },
+
+    "/user/delete/{identifier}": {
+      "delete": {
+        "summary": "Eliminar usuario",
+        "tags": ["USER"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "identifier",
+            "in": "path",
+            "required": true,
+            "description": "username, email o ID del usuario",
+            "schema": {
+              "oneOf": [
+                { "type": "string" },
+                { "type": "number" }
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Usuario eliminado correctamente" },
+          "404": { "description": "Usuario no encontrado" }
+        }
+      }
+    },
+    "/course/create": {
+      "post": {
+        "summary": "Crear un nuevo curso (profesor o admin)",
+        "tags": ["COURSE"],
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["title", "description", "category", "level", "duration"],
+                "properties": {
+                  "image": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Imagen del curso (opcional)"
+                  },
+                  "title": { 
+                    "type": "string",
+                    "example": "React desde Cero - Guía Completa 2024"
+                  },
+                  "description": { 
+                    "type": "string",
+                    "example": "Aprende React.js desde fundamentos hasta conceptos avanzados. Incluye hooks, context API, y mejores prácticas."
+                  },
+                  "category": {
+                    "type": "string",
+                    "enum": [
+                      "web-development",
+                      "mobile-development",
+                      "data-science", 
+                      "artificial-intelligence",
+                      "cybersecurity",
+                      "cloud-computing",
+                      "devops",
+                      "programming-fundamentals",
+                      "database",
+                      "ui-ux-design",
+                      "game-development",
+                      "blockchain"
+                    ],
+                    "example": "web-development"
+                  },
+                  "level": {
+                    "type": "string",
+                    "enum": ["beginner", "intermediate", "advanced"],
+                    "example": "beginner"
+                  },
+                  "price": { 
+                    "type": "number", 
+                    "minimum": 0,
+                    "example": 0
+                  },
+                  "duration": { 
+                    "type": "string",
+                    "example": "40 horas"
+                  },
+                  "isPublished": { 
+                    "type": "boolean",
+                    "example": false
+                  },
+                  "lessons": {
+                    "type": "string",
+                    "description": "Array de lecciones en formato JSON stringificado",
+                    "example": "[{\"title\": \"Introducción a React\", \"description\": \"Conceptos básicos y configuración del entorno de desarrollo\", \"videoUrl\": \"https://example.com/videos/react-intro.mp4\", \"duration\": \"45 minutos\", \"order\": 1, \"resources\": [{\"title\": \"Guía de instalación\", \"url\": \"https://example.com/docs/install-guide.pdf\", \"type\": \"pdf\"}]}]"
+                  }
+                }
+              }
+            },
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["title", "description", "category", "level", "duration"],
+                "properties": {
+                  "title": { 
+                    "type": "string",
+                    "example": "React desde Cero - Guía Completa 2024"
+                  },
+                  "description": { 
+                    "type": "string",
+                    "example": "Aprende React.js desde fundamentos hasta conceptos avanzados. Incluye hooks, context API, y mejores prácticas."
+                  },
+                  "category": {
+                    "type": "string",
+                    "enum": [
+                      "web-development",
+                      "mobile-development",
+                      "data-science", 
+                      "artificial-intelligence",
+                      "cybersecurity",
+                      "cloud-computing",
+                      "devops",
+                      "programming-fundamentals",
+                      "database",
+                      "ui-ux-design",
+                      "game-development",
+                      "blockchain"
+                    ],
+                    "example": "web-development"
+                  },
+                  "level": {
+                    "type": "string",
+                    "enum": ["beginner", "intermediate", "advanced"],
+                    "example": "beginner"
+                  },
+                  "price": { 
+                    "type": "number", 
+                    "minimum": 0,
+                    "example": 0
+                  },
+                  "duration": { 
+                    "type": "string",
+                    "example": "40 horas"
+                  },
+                  "isPublished": { 
+                    "type": "boolean",
+                    "example": false
+                  },
+                  "lessons": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/Lesson"
+                    }
+                  }
+                }
+              },
+              "examples": {
+                "cursoCompleto": {
+                  "summary": "Ejemplo de curso completo con lecciones",
+                  "value": {
+                    "title": "React desde Cero - Guía Completa 2024",
+                    "description": "Aprende React.js desde fundamentos hasta conceptos avanzados. Incluye hooks, context API, y mejores prácticas.",
+                    "category": "web-development",
+                    "level": "beginner",
+                    "price": 0,
+                    "duration": "40 horas",
+                    "isPublished": false,
+                    "lessons": [
+                      {
+                        "title": "Introducción a React",
+                        "description": "Conceptos básicos y configuración del entorno de desarrollo",
+                        "videoUrl": "https://example.com/videos/react-intro.mp4",
+                        "duration": "45 minutos",
+                        "order": 1,
+                        "resources": [
+                          {
+                            "title": "Guía de instalación",
+                            "url": "https://example.com/docs/install-guide.pdf",
+                            "type": "pdf"
+                          },
+                          {
+                            "title": "Código inicial del proyecto",
+                            "url": "https://github.com/example/react-starter",
+                            "type": "code"
+                          }
+                        ]
+                      },
+                      {
+                        "title": "Componentes y JSX",
+                        "description": "Creación de componentes funcionales y sintaxis JSX",
+                        "videoUrl": "https://example.com/videos/react-components.mp4",
+                        "duration": "60 minutos",
+                        "order": 2,
+                        "resources": [
+                          {
+                            "title": "Cheatsheet de JSX",
+                            "url": "https://example.com/docs/jsx-cheatsheet.pdf",
+                            "type": "pdf"
+                          }
+                        ]
+                      },
+                      {
+                        "title": "Estado y Props",
+                        "description": "Manejo del estado con useState y paso de propiedades",
+                        "videoUrl": "https://example.com/videos/react-state-props.mp4",
+                        "duration": "75 minutos",
+                        "order": 3,
+                        "resources": []
+                      },
+                      {
+                        "title": "Hooks Avanzados",
+                        "description": "Uso de useEffect, useContext y custom hooks",
+                        "videoUrl": "https://example.com/videos/react-hooks.mp4",
+                        "duration": "90 minutos",
+                        "order": 4,
+                        "resources": [
+                          {
+                            "title": "Documentación oficial de Hooks",
+                            "url": "https://reactjs.org/docs/hooks-reference.html",
+                            "type": "link"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                },
+                "cursoBasico": {
+                  "summary": "Ejemplo de curso básico sin lecciones",
+                  "value": {
+                    "title": "Introducción a JavaScript",
+                    "description": "Aprende los fundamentos de JavaScript moderno",
+                    "category": "programming-fundamentals",
+                    "level": "beginner",
+                    "price": 0,
+                    "duration": "30 horas",
+                    "isPublished": true,
+                    "lessons": []
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { 
+            "description": "Curso creado correctamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "message": { "type": "string" },
+                    "course": {
+                      "$ref": "#/components/schemas/Course"
+                    }
+                  }
+                }
+              }
+            }
           },
-          "400": {
-            "description": "Error en la actualización"
+          "400": { "description": "Error en la creación del curso" },
+          "401": { "description": "No autorizado" },
+          "403": { "description": "Permisos insuficientes" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "Course": {
+        "type": "object",
+        "properties": {
+          "_id": { "type": "string" },
+          "title": { "type": "string" },
+          "description": { "type": "string" },
+          "category": {
+            "type": "string",
+            "enum": [
+              "web-development",
+              "mobile-development",
+              "data-science",
+              "artificial-intelligence",
+              "cybersecurity", 
+              "cloud-computing",
+              "devops",
+              "programming-fundamentals",
+              "database",
+              "ui-ux-design",
+              "game-development",
+              "blockchain"
+            ]
           },
-          "404": {
-            "description": "Usuario no encontrado"
+          "level": { 
+            "type": "string",
+            "enum": ["beginner", "intermediate", "advanced"]
+          },
+          "price": { "type": "number" },
+          "duration": { "type": "string" },
+          "image": { "type": "string" },
+          "imagePublicId": { "type": "string" },
+          "isPublished": { "type": "boolean" },
+          "lessons": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Lesson"
+            }
+          },
+          "createdBy": {
+            "type": "object",
+            "properties": {
+              "_id": { "type": "string" },
+              "name": { "type": "string" },
+              "username": { "type": "string" },
+              "email": { "type": "string" }
+            }
+          },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Lesson": {
+        "type": "object",
+        "required": ["title", "order"],
+        "properties": {
+          "title": { 
+            "type": "string",
+            "example": "Introducción a React",
+            "description": "Título de la lección"
+          },
+          "description": { 
+            "type": "string",
+            "example": "Conceptos básicos y configuración del entorno",
+            "description": "Descripción detallada de la lección"
+          },
+          "videoUrl": { 
+            "type": "string",
+            "format": "uri",
+            "example": "https://example.com/videos/lesson1.mp4",
+            "description": "URL del video de la lección"
+          },
+          "duration": { 
+            "type": "string",
+            "example": "45 minutos",
+            "description": "Duración estimada de la lección"
+          },
+          "order": { 
+            "type": "integer",
+            "minimum": 1,
+            "example": 1,
+            "description": "Orden de la lección en el curso (comienza en 1)"
+          },
+          "resources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Resource"
+            },
+            "description": "Recursos adicionales de la lección"
+          }
+        }
+      },
+      "Resource": {
+        "type": "object",
+        "properties": {
+          "title": { 
+            "type": "string",
+            "example": "Guía de instalación",
+            "description": "Título del recurso"
+          },
+          "url": { 
+            "type": "string",
+            "format": "uri",
+            "example": "https://example.com/docs/guide.pdf",
+            "description": "URL del recurso"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["pdf", "doc", "code", "link", "other"],
+            "example": "pdf",
+            "description": "Tipo de recurso"
           }
         }
       }

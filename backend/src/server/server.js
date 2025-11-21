@@ -6,8 +6,7 @@ import cors from "cors";
 import { swaggerConfig } from "../config/swagger.js";
 import connectDB from "../config/db.js";
 import userRoutes from "../routes/user.routes.js";
-
-//import courseRoutes from "../routes/course.routes.js";
+import courseRoutes from "../routes/course.routes.js";
 //import purchaseRoutes from "../routes/purchase.routes.js";
 //import certificateRoutes from "../routes/certificate.routes.js";
 
@@ -20,6 +19,7 @@ connectDB();
 swaggerConfig(app);
 // Rutas
 app.use("/user", userRoutes);
+app.use("/course", courseRoutes);
 
 //app.use("/courses", courseRoutes);
 //app.use("/purchases", purchaseRoutes);

@@ -1,15 +1,19 @@
 import registerUser from "../usecases/user/register.user.js";
 import loginUser from "../usecases/user/login.user.js";
 import updateUser from "../usecases/user/updateuser.user.js";
-import deleteUser from "../usecases/user/delete.user.js";
+import { deleteUser } from "../usecases/user/delete.user.js";
+import { deleteUseradmin } from "../usecases/admin/deleteuser.user.js";
 
- export const userController = {
+export const userController = {
   register: async (req, res) => {
     try {
+      console.log("📍 Entrando a register con body:", req.body);
       const user = await registerUser(req.body);
-      res.json({ message: "Usuario registrado", user });
+      console.log("✅ Usuario registrado:", user);
+      return res.json({ message: "Usuario registrado", user });
     } catch (error) {
-      res.status(400).json({ error: error.message });
+      console.error("❌ Error en register:", error.message);
+      return res.status(400).json({ error: error.message });
     }
   },
 
@@ -25,41 +29,116 @@ import deleteUser from "../usecases/user/delete.user.js";
     }
   },
 
-    update: async (req, res) => {
+  update: async (req, res) => {
     try {
-      const identifier = req.params.identifier;
-      const { name, lastname, username, email } = req.body;
-       if (!identifier) {
-      return res.status(400).json({ message: "Falta el parámetro identifier" });
-    }
+      const { identifier } = req.params;
+      const updateData = req.body;
+      const requestingUser = req.user; // Usuario autenticado del middleware
 
-    const updatedUser = await updateUser(identifier, {
-      name,
-      lastname,
-      username,
-      email,
-    
-    });
-    
+      console.log("🔄 UPDATE REQUEST:");
+      console.log("Identifier:", identifier);
+      console.log("Update data:", updateData);
+      console.log("Requesting user:", requestingUser.username);
+
+      // 🔒 Verificar que el usuario solo pueda actualizar su propio perfil
+      if (requestingUser.username !== identifier && !requestingUser.isAdmin) {
+        return res.status(403).json({ 
+          success: false,
+          error: "No tienes permisos para actualizar este perfil" 
+        });
+      }
+
+      const updatedUser = await updateUser(identifier, updateData);
+
       if (!updatedUser) {
-      return res.status(404).json({ message: "Usuario no encontrado" });
-    }
-      return res.status(200).json({ message: "Usuario actualizado", updatedUser });
+        return res.status(404).json({ 
+          success: false,
+          error: "Usuario no encontrado" 
+        });
+      }
+
+      return res.status(200).json({ 
+        success: true,
+        message: "Usuario actualizado correctamente", 
+        user: updatedUser 
+      });
+
     } catch (error) {
-      res.status(400).json({ error: error.message });
-      res.status(500).json({ message: "Error del servidor" });
-      console.log("REQ PARAMS:", req.params);
-    console.log("REQ BODY:", req.body);
+      console.error("❌ Error en update controller:", error.message);
+      return res.status(500).json({ 
+        success: false,
+        error: error.message 
+      });
     }
   },
 
-  delete: async (req, res) => {
+delete: async (req, res) => {
+  try {
+    const { identifier } = req.params;
+    const requestingUser = req.user;
+
+    console.log("🗑️ DELETE REQUEST:");
+    console.log("Identifier:", identifier);
+    console.log("Requesting user:", requestingUser.username);
+
+    // Verificar permisos
+    if (requestingUser.username !== identifier && !requestingUser.isAdmin) {
+      return res.status(403).json({ 
+        success: false,
+        error: "No tienes permisos para eliminar este usuario" 
+      });
+    }
+
+    const deleted = await deleteUser(identifier);
+    
+    // ✅ Siempre devolver JSON
+    return res.status(200).json({ 
+      success: true,
+      message: "Usuario eliminado correctamente",
+      deleted 
+    });
+
+  } catch (error) {
+    console.error("❌ Error en delete controller:", error.message);
+    
+    // ✅ Siempre devolver JSON incluso en errores
+    return res.status(400).json({ 
+      success: false,
+      error: error.message 
+    });
+  }
+},
+  deleteadmin: async (req, res) => {
     try {
-      const deleted = await deleteUser(req.params.id);
-      res.json({ message: "Usuario eliminado", deleted });
+      const { identifier } = req.params;
+      const requestingUser = req.user;
+
+      console.log("👑 ADMIN DELETE REQUEST:");
+      console.log("Identifier:", identifier);
+      console.log("Requesting user:", requestingUser.username);
+
+      // 🔒 Verificar que sea admin
+      if (!requestingUser.isAdmin) {
+        return res.status(403).json({ 
+          success: false,
+          error: "Se requieren permisos de administrador" 
+        });
+      }
+
+      const deleted = await deleteUseradmin(identifier);
+      
+      return res.json({ 
+        success: true,
+        message: "Usuario eliminado por administrador", 
+        deleted 
+      });
+
     } catch (error) {
-      res.status(400).json({ error: error.message });
+      console.error("❌ Error en deleteadmin controller:", error.message);
+      return res.status(400).json({ 
+        success: false,
+        error: error.message 
+      });
     }
   }
 };
-

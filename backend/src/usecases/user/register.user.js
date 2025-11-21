@@ -1,7 +1,9 @@
 import User from "../../models/user.model.js";
 import { hashService } from "../../services/hash.service.js";
 
-export default async ({ name, lastname, username, email, password }) => {
+export default async ({ name,ID, lastname, username, email, password }) => {
+  const IDExists = await User.findOne({ ID });
+  if (IDExists) throw new Error("El ID ya está registrado");
   const exists = await User.findOne({ email });
   if (exists) throw new Error("El correo ya está registrado");
     const usernameExists = await User.findOne({ username });
@@ -10,6 +12,7 @@ export default async ({ name, lastname, username, email, password }) => {
 
   const user = new User({
     name,
+    ID,
     username,
     lastname,
     email,

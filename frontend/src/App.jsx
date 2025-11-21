@@ -5,13 +5,15 @@ import Home from "./components/home";
 import UserProfile from "./components/user/Profile";
 import MyCourses from "./components/courses/MyCourses";
 import AdminPanel from "./components/admin/adminpanel";
+import CourseCatalog from "./components/courses/CourseCatalog"; // ✅ Nuevo componente
 
 // Import API
 import { apiRegister } from "./api/register";
 import { apiLogin } from "./api/login";
+import { apiUpdateUser } from "./api/user";
 
 export default function App() {
-  const [currentView, setCurrentView] = useState("home"); // home | profile | my-courses | admin
+  const [currentView, setCurrentView] = useState("home"); // home | profile | my-courses | admin | catalog
   const [authView, setAuthView] = useState("login"); // login | register
   const [user, setUser] = useState(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -26,8 +28,6 @@ export default function App() {
     try {
       const token = localStorage.getItem("token");
       if (token) {
-        // Aquí podrías hacer una llamada para verificar el token
-        // Por ahora, asumimos que el token es válido
         const userData = JSON.parse(localStorage.getItem("user"));
         if (userData) {
           setUser(userData);
@@ -44,7 +44,7 @@ export default function App() {
 
   /* ===============================
         🔐 HANDLER: REGISTER
-     =============================== */
+  =============================== */
   const handleRegister = async (data) => {
     const result = await apiRegister(data);
 
@@ -53,21 +53,12 @@ export default function App() {
     }
 
     console.log("Usuario creado:", result.data);
-    
-    // Guardar usuario en estado y localStorage
-    setUser(result.data);
-    localStorage.setItem("user", JSON.stringify(result.data));
-    localStorage.setItem("token", result.data.token);
-    
-    setShowAuthModal(false);
-    setCurrentView("home");
-
     return { ok: true };
   };
 
   /* ===============================
         🔐 HANDLER: LOGIN
-     =============================== */
+  =============================== */
   const handleLogin = async ({ identifier, password }) => {
     console.log("Handle login called with:", { identifier, password });
 
@@ -92,6 +83,7 @@ export default function App() {
       return { ok: false, error: { message: result.error } };
     }
 
+    // ✅ Establecer usuario y redirigir
     localStorage.setItem("token", result.token);
     localStorage.setItem("user", JSON.stringify(result.user));
     setUser(result.user);
@@ -103,7 +95,7 @@ export default function App() {
 
   /* ===============================
         🔓 LOGOUT
-     =============================== */
+  =============================== */
   const logout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
@@ -114,7 +106,7 @@ export default function App() {
 
   /* ===============================
         🎯 HANDLERS AUTH MODAL
-     =============================== */
+  =============================== */
   const openLogin = () => {
     setAuthView("login");
     setShowAuthModal(true);
@@ -132,15 +124,31 @@ export default function App() {
 
   /* ===============================
         🎯 HANDLER UPDATE USER
-     =============================== */
-  const handleUserUpdate = (updatedUser) => {
+  =============================== */
+  const handleUserUpdate = async (formData) => {
+    const result = await apiUpdateUser(formData);
+
+    if (!result.ok) {
+      alert(result.error);
+      return false;
+    }
+
+    const updatedUser = result.data;
     setUser(updatedUser);
     localStorage.setItem("user", JSON.stringify(updatedUser));
+    return true;
+  };
+
+  /* ===============================
+        🎯 HANDLER NAVEGACIÓN
+  =============================== */
+  const handleNavigate = (view) => {
+    setCurrentView(view);
   };
 
   /* ===============================
             🖥️ RENDER
-     =============================== */
+  =============================== */
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -163,7 +171,7 @@ export default function App() {
           onOpenLogin={openLogin}
           onOpenRegister={openRegister}
           currentView={currentView}
-          onNavigate={setCurrentView}
+          onNavigate={handleNavigate}
         />
       ) : (
         // Usuario logueado - Vista según navegación
@@ -175,7 +183,7 @@ export default function App() {
               onOpenLogin={openLogin}
               onOpenRegister={openRegister}
               currentView={currentView}
-              onNavigate={setCurrentView}
+              onNavigate={handleNavigate}
             />
           )}
           {currentView === "profile" && (
@@ -183,13 +191,26 @@ export default function App() {
               user={user} 
               onUserUpdate={handleUserUpdate}
               onLogout={logout}
+              onNavigate={handleNavigate}
             />
           )}
           {currentView === "my-courses" && (
-            <MyCourses user={user} />
+            <MyCourses 
+              user={user} 
+              onNavigate={handleNavigate}
+            />
           )}
-          {currentView === "admin" && (
-            <AdminPanel user={user} />
+          {currentView === "catalog" && (
+            <CourseCatalog 
+              user={user} 
+              onNavigate={handleNavigate}
+            />
+          )}
+          {currentView === "admin" && user.role === "admin" && (
+            <AdminPanel 
+              user={user} 
+              onNavigate={handleNavigate}
+            />
           )}
         </>
       )}
@@ -207,7 +228,13 @@ export default function App() {
             ) : (
               <Register
                 onSubmit={handleRegister}
-                onSwitch={() => setAuthView("login")}
+                onSwitch={() => {
+                  setShowAuthModal(false);
+                  setTimeout(() => {
+                    setAuthView("login");
+                    setShowAuthModal(true);
+                  }, 300);
+                }}
                 onClose={closeAuthModal}
               />
             )}

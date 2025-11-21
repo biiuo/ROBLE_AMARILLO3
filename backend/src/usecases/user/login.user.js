@@ -23,7 +23,9 @@ export default async ({ identifier, password }) => {
   const token = jwtService.sign({
     id: user._id,
     role: user.role,
-    email: user.email
+    username: user.username,
+    email: user.email,
+    ID: user.ID
   });
   console.log("User logged in:", user);
   return { user, token };
