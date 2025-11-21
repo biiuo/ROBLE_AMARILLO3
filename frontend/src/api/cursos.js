@@ -1,4 +1,5 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL ;
+
+const BASE_URL = import.meta.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
 
 // Helper para requests JSON
 const apiRequest = async (endpoint, options = {}) => {
@@ -18,7 +19,7 @@ const apiRequest = async (endpoint, options = {}) => {
   }
 
   try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+    const response = await fetch(`${BASE_URL}${endpoint}`, config);
     const data = await response.json();
 
     if (!response.ok) {
@@ -76,7 +77,7 @@ export const apiCreateCourse = async (formData) => {
   const token = localStorage.getItem('token');
   
   try {
-    const response = await fetch(`${API_BASE_URL}/course/create`, {
+    const response = await fetch(`${BASE_URL}/course/create`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`
@@ -111,7 +112,7 @@ export const apiUpdateCourse = async (courseId, formData) => {
   const token = localStorage.getItem('token');
   
   try {
-    const response = await fetch(`${API_BASE_URL}/course/update/${courseId}`, {
+    const response = await fetch(`${BASE_URL}/course/update/${courseId}`, {
       method: 'PUT',
       headers: {
         'Authorization': `Bearer ${token}`

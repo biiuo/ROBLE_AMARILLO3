@@ -1,5 +1,6 @@
 // api/user.js
-const API_URL = import.meta.env.VITE_API_URL;
+const BASE_URL = import.meta.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+
 /* ===============================
         UPDATE USER
      =============================== */
@@ -21,7 +22,7 @@ export const apiUpdateUser = async (formData) => {
     console.log("Enviando actualización para:", identifier);
     console.log("Datos:", formData);
 
-    const response = await fetch(`${API_URL}/user/update/${identifier}`, {
+    const response = await fetch(`${BASE_URL}/user/update/${identifier}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -83,7 +84,7 @@ export const apiDeleteUser = async () => {
 
     const identifier = user.username;
 
-    const response = await fetch(`${API_URL}/user/delete/${identifier}`, {
+    const response = await fetch(`${BASE_URL}/user/delete/${identifier}`, {
       method: "DELETE",
       headers: {
         "Authorization": `Bearer ${token}`

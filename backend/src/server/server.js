@@ -13,7 +13,7 @@ import uploadRoutes from "../routes/upload.route.js";
 //import certificateRoutes from "../routes/certificate.routes.js";
 
 const app = express();
-app.use(cors({ origin: ["http://localhost:3000", "https://roble_amarillo3.vercel.app"] }));
+app.use(cors({ origin: ["http://localhost:3000", "/https:\/\/.*\.vercel\.app$/"] }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
