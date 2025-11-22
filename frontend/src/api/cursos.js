@@ -1,5 +1,5 @@
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const BASE_URL = import.meta.env.VITE_API_URL|| import.meta.VITE_API_URL_LOCAL;
 
 // Helper para requests JSON
 const apiRequest = async (endpoint, options = {}) => {
@@ -73,33 +73,47 @@ export const apiEnrollCourse = async (courseId) => {
 };
 
 // Crear curso con FormData
-export const apiCreateCourse = async (formData) => {
+const objectToFormData = (obj) => {
+  const fd = new FormData();
+  Object.keys(obj).forEach((key) => {
+    const val = obj[key];
+    if (val === undefined || val === null) return;
+    if (typeof val === 'object' && !(val instanceof File) && !(val instanceof Blob)) {
+      fd.append(key, JSON.stringify(val));
+    } else {
+      fd.append(key, val);
+    }
+  });
+  return fd;
+};
+
+export const apiCreateCourse = async (data) => {
   const token = localStorage.getItem('token');
-  
   try {
+    const body = data instanceof FormData ? data : objectToFormData(data);
+
     const response = await fetch(`${BASE_URL}/course/create`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`
       },
-      body: formData
+      body
     });
 
-    const data = await response.json();
+    const respData = await response.json();
 
     if (!response.ok) {
       return {
         ok: false,
-        error: data.error || `Error ${response.status}`
+        error: respData.error || `Error ${response.status}`
       };
     }
 
     return {
       ok: true,
-      data
+      data: respData
     };
   } catch (error) {
-    
     return {
       ok: false,
       error: `Error de conexión al crear curso + ${error.message}`
@@ -108,30 +122,31 @@ export const apiCreateCourse = async (formData) => {
 };
 
 // Actualizar curso con FormData
-export const apiUpdateCourse = async (courseId, formData) => {
+export const apiUpdateCourse = async (courseId, data) => {
   const token = localStorage.getItem('token');
-  
   try {
+    const body = data instanceof FormData ? data : objectToFormData(data);
+
     const response = await fetch(`${BASE_URL}/course/update/${courseId}`, {
       method: 'PUT',
       headers: {
         'Authorization': `Bearer ${token}`
       },
-      body: formData
+      body
     });
 
-    const data = await response.json();
+    const respData = await response.json();
 
     if (!response.ok) {
       return {
         ok: false,
-        error: data.error || `Error ${response.status}`
+        error: respData.error || `Error ${response.status}`
       };
     }
 
     return {
       ok: true,
-      data
+      data: respData
     };
   } catch (error) {
     return {

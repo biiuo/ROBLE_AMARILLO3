@@ -615,7 +615,10 @@ const handleEnrollFromHome = async (courseId) => {
           <div className="flex justify-between items-center">
             {/* Logo y Navegación */}
             <div className="flex items-center space-x-8">
-              <div className="flex items-center space-x-3">
+              <button
+                onClick={() => onNavigate("home")}
+                className="flex items-center space-x-3 hover:opacity-80 transition-opacity cursor-pointer"
+              >
                 <svg
                   className="w-8 h-8 text-yellow-500"
                   fill="currentColor"
@@ -626,7 +629,7 @@ const handleEnrollFromHome = async (courseId) => {
                 <h1 className="text-xl font-bold text-gray-800">
                   Roble Amarillo Fundamentals
                 </h1>
-              </div>
+              </button>
 
               <nav className="flex space-x-6">
                 <button
@@ -661,13 +664,16 @@ const handleEnrollFromHome = async (courseId) => {
                 </button>
                 <button
                   onClick={() => onNavigate("profile")}
-                  className={`font-medium transition-colors ${
+                  className={`font-medium transition-colors flex items-center space-x-1 ${
                     currentView === "profile"
                       ? "text-yellow-600"
                       : "text-gray-600 hover:text-gray-900"
                   }`}
                 >
-                  Mi Perfil
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                  </svg>
+                  <span>Mi Perfil</span>
                 </button>
                 {user?.role === "admin" && (
                   <button

@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
 import { apiGetMyCourses } from "../../api/cursos.js";
+import CourseDetailModal from "./CourseDetailModal";
 
 export default function MyCourses({ user, onNavigate }) {
   const [myCourses, setMyCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [selectedCourse, setSelectedCourse] = useState(null);
 
   useEffect(() => {
     loadMyCourses();
@@ -38,9 +40,8 @@ export default function MyCourses({ user, onNavigate }) {
   };
 
   const handleContinueLearning = (course) => {
-    // Aquí puedes implementar la navegación al reproductor del curso
-    console.log("Continuar curso:", course);
-    alert(`Continuar con: ${course.title}`);
+    // Abrir el modal del curso
+    setSelectedCourse(course);
   };
 
   const getCourseProgress = (course) => {
@@ -64,12 +65,15 @@ export default function MyCourses({ user, onNavigate }) {
           <div className="flex justify-between items-center">
             {/* Logo y Navegación */}
             <div className="flex items-center space-x-8">
-              <div className="flex items-center space-x-3">
+              <button
+                onClick={() => onNavigate("home")}
+                className="flex items-center space-x-3 hover:opacity-80 transition-opacity cursor-pointer focus:outline-none"
+              >
                 <svg className="w-8 h-8 text-yellow-500" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M12 3L1 9l11 6 9-4.91V17h2V9M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z"/>
                 </svg>
                 <h1 className="text-xl font-bold text-gray-800">Roble Amarillo Fundamentals</h1>
-              </div>
+              </button>
               
               <nav className="flex space-x-6">
                 <button
@@ -110,7 +114,20 @@ export default function MyCourses({ user, onNavigate }) {
             {/* Información del usuario */}
             <div className="flex items-center space-x-4">
               <div className="text-right">
-                <p className="font-medium text-gray-800">Hola, {user.name}!</p>
+                <button
+                  onClick={() => onNavigate("profile")}
+                  className="flex items-center space-x-2 hover:opacity-80 transition-opacity focus:outline-none"
+                  title="Ir a perfil"
+                >
+                  <svg
+                    className="w-5 h-5 text-gray-600"
+                    fill="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                  </svg>
+                  <span className="font-medium text-gray-800">Hola, {user.name}!</span>
+                </button>
                 <p className="text-sm text-gray-600">{user.email}</p>
               </div>
             </div>
@@ -210,7 +227,7 @@ export default function MyCourses({ user, onNavigate }) {
                       
                       {/* Botón para ver detalles */}
                       <button
-                        onClick={() => console.log("Ver detalles:", courseData._id)}
+                        onClick={() => setSelectedCourse(courseData)}
                         className="px-4 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
                         title="Ver detalles del curso"
                       >
@@ -283,6 +300,14 @@ export default function MyCourses({ user, onNavigate }) {
             </div>
           </div>
         )}
+
+        {/* Modal de detalles del curso */}
+        <CourseDetailModal
+          course={selectedCourse}
+          isOpen={!!selectedCourse}
+          onClose={() => setSelectedCourse(null)}
+          user={user}
+        />
       </div>
     </div>
   );

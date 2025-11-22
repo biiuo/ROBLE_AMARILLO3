@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { apiDeleteCourse, apiGetAllCourses, apiUpdateCourse } from "../../api/cursos";
+import { apiDeleteCourse, apiGetAllCourses, apiUpdateCourse } from "../../api/cursos.js";
 
 export default function CourseList({ onEditCourse, refreshTrigger }) {
   const [courses, setCourses] = useState([]);
@@ -77,8 +77,10 @@ export default function CourseList({ onEditCourse, refreshTrigger }) {
 
   // Edición rápida de precio
   const startEditingPrice = (courseId, currentPrice) => {
+    console.log("✏️ Iniciando edición de precio:", { courseId, currentPrice });
     setEditingPrice(courseId);
-    setPriceValue(currentPrice.toString());
+    // Iniciar vacío para que el usuario escriba el nuevo valor desde cero
+    setPriceValue("");
   };
 
   const cancelEditingPrice = () => {
@@ -89,16 +91,19 @@ export default function CourseList({ onEditCourse, refreshTrigger }) {
   const savePrice = async (courseId) => {
     try {
       const newPrice = parseFloat(priceValue);
+      console.log("💰 Intentando guardar precio:", { courseId, newPrice, priceValue });
+      
       if (isNaN(newPrice) || newPrice < 0) {
         setError("El precio debe ser un número válido mayor o igual a 0");
+        console.warn("❌ Validación de precio falló:", { priceValue, newPrice });
         return;
       }
 
-      const result = await apiUpdateCourse(courseId, { 
-        price: newPrice 
-      });
+      const result = await apiUpdateCourse(courseId, { price: newPrice });
+      console.log("📊 Respuesta de actualización de precio:", result);
       
       if (result.ok) {
+        console.log("✅ Precio actualizado exitosamente");
         setCourses(courses.map(course => 
           course._id === courseId 
             ? { ...course, price: newPrice }
@@ -106,11 +111,16 @@ export default function CourseList({ onEditCourse, refreshTrigger }) {
         ));
         setEditingPrice(null);
         setPriceValue("");
+        setError(""); // Limpiar errores anteriores
       } else {
-        setError(result.error || "Error al actualizar el precio");
+        const errorMsg = result.error || "Error al actualizar el precio";
+        console.error("❌ Error en respuesta:", errorMsg);
+        setError(errorMsg);
       }
     } catch (err) {
-      setError("Error al actualizar el precio: " + err.message);
+      const errorMsg = "Error al actualizar el precio: " + err.message;
+      console.error("❌ Excepción en savePrice:", err);
+      setError(errorMsg);
     }
   };
 
@@ -332,16 +342,26 @@ export default function CourseList({ onEditCourse, refreshTrigger }) {
                               type="number"
                               value={priceValue}
                               onChange={(e) => setPriceValue(e.target.value)}
-                              className="pl-6 pr-2 py-1 border border-gray-300 rounded text-sm w-20 focus:ring-1 focus:ring-yellow-500"
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  savePrice(course._id);
+                                } else if (e.key === 'Escape') {
+                                  cancelEditingPrice();
+                                }
+                              }}
+                              placeholder="0.00"
+                              className="pl-6 pr-2 py-1 border border-yellow-500 rounded text-sm w-24 focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 bg-yellow-50"
                               step="0.01"
                               min="0"
                               autoFocus
+                              onFocus={(e) => e.target.select()}
                             />
                           </div>
                           <div className="flex space-x-1">
                             <button
                               onClick={() => savePrice(course._id)}
-                              className="text-green-600 hover:text-green-800"
+                              className="text-green-600 hover:text-green-800 hover:bg-green-50 p-1 rounded transition-colors"
+                              title="Guardar precio (Enter)"
                             >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -349,7 +369,8 @@ export default function CourseList({ onEditCourse, refreshTrigger }) {
                             </button>
                             <button
                               onClick={cancelEditingPrice}
-                              className="text-gray-600 hover:text-gray-800"
+                              className="text-gray-600 hover:text-gray-800 hover:bg-gray-100 p-1 rounded transition-colors"
+                              title="Cancelar (Escape)"
                             >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

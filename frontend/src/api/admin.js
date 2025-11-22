@@ -1,6 +1,6 @@
 import { apiRequest } from './cursos';
 
-const BASE_URL = import.meta.env.VITE_API_URL|| 'http://localhost:5000';
+const BASE_URL = import.meta.env.VITE_API_URL|| import.meta.VITE_API_URL_LOCAL;
 
 // Estadísticas del dashboard
 export const apiGetDashboardStats = async () => {

@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { apiCreateCourse, apiUpdateCourse } from "../../api/cursos";
-import { apiUploadImage } from "../../api/upload"; // Nueva API para upload
 
-export default function CourseForm({ course, onCancel, onSuccess }) {
+export default function CourseForm({ course, onCancel, onSuccess, onSubmit }) {
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -15,8 +14,10 @@ export default function CourseForm({ course, onCancel, onSuccess }) {
     imageFile: null // Nuevo campo para el archivo
   });
   const [loading, setLoading] = useState(false);
-  const [uploading, setUploading] = useState(false);
+  
   const [error, setError] = useState("");
+  const [showLessons, setShowLessons] = useState(false);
+  const [lessonsText, setLessonsText] = useState('');
   const fileInputRef = useRef(null);
 
   const isEditing = !!course?._id;
@@ -55,43 +56,18 @@ export default function CourseForm({ course, onCancel, onSuccess }) {
         image: course.image || "",
         imageFile: null
       });
+      // load lessons if present
+      if (course.lessons && Array.isArray(course.lessons) && course.lessons.length > 0) {
+        setShowLessons(true);
+        setLessonsText(JSON.stringify(course.lessons, null, 2));
+      } else {
+        setShowLessons(false);
+        setLessonsText('');
+      }
     }
   }, [course]);
 
-  const handleImageUpload = async (file) => {
-    if (!file) return null;
-
-    // Validaciones
-    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-    const maxSize = 5 * 1024 * 1024; // 5MB
-
-    if (!validTypes.includes(file.type)) {
-      setError("Formato no válido. Usa JPG, PNG o WebP");
-      return null;
-    }
-
-    if (file.size > maxSize) {
-      setError("La imagen es muy grande. Máximo 5MB");
-      return null;
-    }
-
-    try {
-      setUploading(true);
-      const result = await apiUploadImage(file);
-      
-      if (result.ok) {
-        return result.data; // { imageUrl: string, publicId: string }
-      } else {
-        setError(result.error || "Error al subir la imagen");
-        return null;
-      }
-    } catch (error) {
-      setError("Error al subir la imagen: " + error.message);
-      return null;
-    } finally {
-      setUploading(false);
-    }
-  };
+  
 
   const handleFileSelect = async (e) => {
     const file = e.target.files[0];
@@ -141,18 +117,7 @@ export default function CourseForm({ course, onCancel, onSuccess }) {
         return;
       }
 
-      let imageData = null;
-
-      // Subir imagen si hay un archivo nuevo
-      if (formData.imageFile) {
-        imageData = await handleImageUpload(formData.imageFile);
-        if (!imageData) {
-          setLoading(false);
-          return;
-        }
-      }
-
-      // Preparar datos para enviar
+      // Preparar datos para enviar (si hay archivo, lo incluimos y el backend lo procesará con multer)
       const submitData = {
         title: formData.title,
         description: formData.description,
@@ -161,31 +126,65 @@ export default function CourseForm({ course, onCancel, onSuccess }) {
         duration: formData.duration,
         level: formData.level,
         isPublished: formData.isPublished,
-        ...(imageData && {
-          image: imageData.imageUrl,
-          imagePublicId: imageData.publicId
-        }),
-        // Si no hay imagen nueva pero hay imagen existente, mantenerla
-        ...(!imageData && formData.image && !formData.image.startsWith('blob:') && {
+        ...(formData.imageFile && { image: formData.imageFile }),
+        // Si no hay archivo nuevo pero hay una URL existente (no preview blob), mantenerla
+        ...(!formData.imageFile && formData.image && !formData.image.startsWith('blob:') && {
           image: formData.image
         })
       };
 
-      let result;
-      if (isEditing) {
-        result = await apiUpdateCourse(course._id, submitData);
-      } else {
-        result = await apiCreateCourse(submitData);
+      // Si el usuario ha activado la sección de lecciones, parsear y añadirlas
+      if (showLessons && lessonsText.trim()) {
+        try {
+          const parsed = JSON.parse(lessonsText);
+          if (!Array.isArray(parsed)) throw new Error('Las lecciones deben ser un array');
+          submitData.lessons = parsed;
+        } catch (err) {
+          setError('Formato de lecciones inválido: ' + err.message);
+          setLoading(false);
+          return;
+        }
       }
 
-      if (result.ok) {
+      // Debug log para ayudar a verificar que se está enviando la imagen correcta
+      console.log('📤 submitData antes de enviar:', {
+        title: submitData.title,
+        image: submitData.image,
+        imagePublicId: submitData.imagePublicId,
+        lessons: submitData.lessons ? submitData.lessons.length : 0
+      });
+
+      let result;
+      if (typeof onSubmit === 'function') {
+        // If parent passed an onSubmit handler, prefer it. When editing,
+        // call with (id, data), otherwise call with (data).
+        if (isEditing) {
+          result = await onSubmit(course._id, submitData);
+        } else {
+          result = await onSubmit(submitData);
+        }
+      } else {
+        // Fallback to internal API calls
+        if (isEditing) {
+          result = await apiUpdateCourse(course._id, submitData);
+        } else {
+          result = await apiCreateCourse(submitData);
+        }
+      }
+
+      const success = (result && result.ok) || result === true;
+
+      if (success) {
         // Limpiar URL del preview si existe
         if (formData.image && formData.image.startsWith('blob:')) {
           URL.revokeObjectURL(formData.image);
         }
-        onSuccess();
+        if (typeof onSuccess === 'function') {
+          onSuccess();
+        }
       } else {
-        setError(result.error || "Error al guardar el curso");
+        const message = (result && result.error) ? result.error : "Error al guardar el curso";
+        setError(message);
       }
     } catch (err) {
       setError("Error al guardar el curso: " + err.message);
@@ -293,15 +292,7 @@ export default function CourseForm({ course, onCancel, onSuccess }) {
               </p>
             </div>
 
-            {uploading && (
-              <div className="flex items-center space-x-2 text-sm text-yellow-600">
-                <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                <span>Subiendo imagen...</span>
-              </div>
-            )}
+            
           </div>
         </div>
 
@@ -388,6 +379,51 @@ export default function CourseForm({ course, onCancel, onSuccess }) {
           </div>
         </div>
 
+        {/* Lecciones (opcional, JSON) */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h4 className="text-lg font-semibold text-gray-800 border-b pb-2">Lecciones (opcional)</h4>
+            <button
+              type="button"
+              onClick={() => {
+                setShowLessons(s => !s);
+                if (!showLessons && !lessonsText) {
+                  // Prefill with example
+                  setLessonsText(JSON.stringify([
+                    {
+                      title: "Introducción a React",
+                      description: "Conceptos básicos y configuración del entorno de desarrollo",
+                      videoUrl: "https://example.com/videos/react-intro.mp4",
+                      duration: "45 minutos",
+                      order: 1,
+                      resources: [
+                        { title: "Guía de instalación", url: "https://example.com/docs/install-guide.pdf", type: "pdf" }
+                      ]
+                    }
+                  ], null, 2));
+                }
+              }}
+              className="px-3 py-1 bg-gray-100 text-sm rounded hover:bg-gray-200"
+            >
+              {showLessons ? 'Ocultar' : 'Añadir lecciones (JSON)'}
+            </button>
+          </div>
+
+          {showLessons && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Lecciones (JSON)</label>
+              <textarea
+                value={lessonsText}
+                onChange={(e) => setLessonsText(e.target.value)}
+                rows={8}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent font-mono text-sm"
+                placeholder='[ { "title": "...", "order": 1, "duration": "..." } ]'
+              />
+              <p className="text-xs text-gray-500 mt-1">Introduce un array de lecciones en formato JSON. Ejemplo disponible al mostrar la sección.</p>
+            </div>
+          )}
+        </div>
+
         {/* Configuración del Curso */}
         <div className="space-y-6">
           <h4 className="text-lg font-semibold text-gray-800 border-b pb-2">
@@ -405,8 +441,11 @@ export default function CourseForm({ course, onCancel, onSuccess }) {
                 </span>
                 <input
                   type="number"
-                  value={formData.price}
-                  onChange={(e) => handleInputChange('price', parseFloat(e.target.value) || 0)}
+                  value={formData.price === 0 ? "" : formData.price}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    handleInputChange('price', value === "" ? 0 : parseFloat(value) || 0);
+                  }}
                   className="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
                   placeholder="0.00"
                   min="0"
@@ -474,24 +513,24 @@ export default function CourseForm({ course, onCancel, onSuccess }) {
           <button
             type="button"
             onClick={onCancel}
-            disabled={loading || uploading}
+            disabled={loading}
             className="px-8 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
           >
             Cancelar
           </button>
           <button
             type="submit"
-            disabled={loading || uploading}
+            disabled={loading}
             className="px-8 py-3 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors disabled:opacity-50 flex items-center space-x-2"
           >
-            {(loading || uploading) && (
+            {loading && (
               <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
             )}
             <span>
-              {loading || uploading 
+              {loading 
                 ? "Guardando..." 
                 : (isEditing ? "Actualizar Curso" : "Crear Curso")
               }

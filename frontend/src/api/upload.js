@@ -1,5 +1,5 @@
 // api/upload.js
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const BASE_URL = import.meta.env.VITE_API_URL|| import.meta.VITE_API_URL_LOCAL;
 export const apiUploadImage = async (file) => {
   try {
     const token = localStorage.getItem('token');
@@ -20,8 +20,10 @@ export const apiUploadImage = async (file) => {
       throw new Error(errorData.message || 'Error subiendo imagen');
     }
 
-    const data = await response.json();
-    return { ok: true, data };
+    const json = await response.json();
+    // El backend responde { success: true, message: '', data: { imageUrl, publicId } }
+    // Queremos devolver directamente el objeto con imageUrl/publicId para facilitar el uso.
+    return { ok: true, data: json.data || json };
   } catch (error) {
     return { ok: false, error: error.message };
   }

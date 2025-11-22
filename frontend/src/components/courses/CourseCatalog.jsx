@@ -9,6 +9,7 @@ import {
   getCategoryLabel,
   getCategoryIcon,
 } from "../../utils/categories";
+import CourseDetailModal from "./CourseDetailModal";
 
 // Importar la URL base de la API
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
@@ -317,7 +318,10 @@ export default function CourseCatalog({ user, onNavigate }) {
         <div className="container mx-auto px-6 py-4">
           <div className="flex justify-between items-center">
             <div className="flex items-center space-x-8">
-              <div className="flex items-center space-x-3">
+              <button
+                onClick={() => onNavigate("home")}
+                className="flex items-center space-x-3 hover:opacity-80 transition-opacity cursor-pointer focus:outline-none"
+              >
                 <svg
                   className="w-8 h-8 text-yellow-500"
                   fill="currentColor"
@@ -328,7 +332,7 @@ export default function CourseCatalog({ user, onNavigate }) {
                 <h1 className="text-xl font-bold text-gray-800">
                   Catálogo de Cursos
                 </h1>
-              </div>
+              </button>
 
               <nav className="flex space-x-6">
                 <button
@@ -352,9 +356,20 @@ export default function CourseCatalog({ user, onNavigate }) {
             {user && (
               <div className="flex items-center space-x-4">
                 <div className="text-right">
-                  <p className="font-medium text-gray-800">
-                    Hola, {user.name}!
-                  </p>
+                  <button
+                    onClick={() => onNavigate("profile")}
+                    className="flex items-center space-x-2 hover:opacity-80 transition-opacity focus:outline-none"
+                    title="Ir a perfil"
+                  >
+                    <svg
+                      className="w-5 h-5 text-gray-600"
+                      fill="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                    </svg>
+                    <span className="font-medium text-gray-800">Hola, {user.name}!</span>
+                  </button>
                   <p className="text-sm text-gray-600">{user.email}</p>
                 </div>
               </div>
@@ -557,38 +572,17 @@ export default function CourseCatalog({ user, onNavigate }) {
                     </div>
 
                     <button
-                      onClick={() => handleEnroll(course._id)}
-                      disabled={
-                        isEnrolling || (user && isCourseEnrolled(course._id))
-                      }
-                      className={`w-full py-3 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                        user && isCourseEnrolled(course._id)
-                          ? "bg-green-500 text-white hover:bg-green-600"
-                          : "bg-yellow-500 text-white hover:bg-yellow-600"
-                      }`}
+                      onClick={() => setSelectedCourse(course)}
+                      disabled={isEnrolling}
+                      className="w-full py-3 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-yellow-500 text-white hover:bg-yellow-600"
                     >
                       {isEnrolling ? (
                         <div className="flex items-center justify-center">
                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                          Inscribiendo...
-                        </div>
-                      ) : user && isCourseEnrolled(course._id) ? (
-                        <div className="flex items-center justify-center">
-                          <svg
-                            className="w-5 h-5 mr-2"
-                            fill="currentColor"
-                            viewBox="0 0 20 20"
-                          >
-                            <path
-                              fillRule="evenodd"
-                              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                              clipRule="evenodd"
-                            />
-                          </svg>
-                          Inscrito
+                          Cargando...
                         </div>
                       ) : (
-                        "Inscribirse en el curso"
+                        "Ver Detalles"
                       )}
                     </button>
                   </div>
@@ -740,6 +734,16 @@ export default function CourseCatalog({ user, onNavigate }) {
           </div>
         </div>
       )}
+
+      {/* Modal de detalles del curso */}
+      <CourseDetailModal
+        course={selectedCourse && typeof selectedCourse === "object" ? selectedCourse : null}
+        isOpen={!!selectedCourse}
+        onClose={() => setSelectedCourse(null)}
+        onEnroll={handleEnroll}
+        enrolling={enrolling}
+        user={user}
+      />
     </div>
   );
 }

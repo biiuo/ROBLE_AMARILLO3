@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { apiGetAllCourses, apiCreateCourse, apiUpdateCourse, apiDeleteCourse } from "../../api/cursos";
 import { apiGetDashboardStats, apiGetAllUsers, apiCreateUser, apiUpdateUser, apiDeleteUser } from "../../api/admin";
-import CourseForm from "./courseForm";
-import CourseList from "./courseList";
+import CourseForm from "./courseForm.jsx";
+import CourseList from "./courseList.jsx";
 import UserManagement from "./usermanagment";
 import DashboardStats from "./dashboardstats";
 
@@ -13,6 +13,7 @@ export default function AdminPanel({ user, onNavigate }) {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [editingCourse, setEditingCourse] = useState(null);
   const [editingUser, setEditingUser] = useState(null);
 
@@ -207,12 +208,15 @@ export default function AdminPanel({ user, onNavigate }) {
         <div className="container mx-auto px-6 py-4">
           <div className="flex justify-between items-center">
             <div className="flex items-center space-x-8">
-              <div className="flex items-center space-x-3">
+              <button
+                onClick={() => onNavigate("home")}
+                className="flex items-center space-x-3 hover:opacity-80 transition-opacity cursor-pointer"
+              >
                 <svg className="w-8 h-8 text-yellow-500" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M12 3L1 9l11 6 9-4.91V17h2V9M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z"/>
                 </svg>
                 <h1 className="text-xl font-bold text-gray-800">Panel de Administración</h1>
-              </div>
+              </button>
               
               <nav className="flex space-x-6">
                 <button
@@ -232,6 +236,15 @@ export default function AdminPanel({ user, onNavigate }) {
                 <p className="font-medium text-gray-800">Hola, {user.name}!</p>
                 <p className="text-sm text-gray-600">Administrador</p>
               </div>
+              <button
+                onClick={() => onNavigate("profile")}
+                className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                title="Ir al perfil"
+              >
+                <svg className="w-6 h-6 text-gray-600" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                </svg>
+              </button>
             </div>
           </div>
         </div>
@@ -291,6 +304,20 @@ export default function AdminPanel({ user, onNavigate }) {
           </div>
         )}
 
+        {success && (
+          <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M16.707 5.293a1 1 0 00-1.414-1.414L8 11.172 5.707 8.879a1 1 0 10-1.414 1.414l3 3a1 1 0 001.414 0l8-8z" />
+                </svg>
+                {success}
+              </div>
+              <button onClick={() => setSuccess("")} className="text-green-700 hover:text-green-900">Cerrar</button>
+            </div>
+          </div>
+        )}
+
         {/* Renderizar contenido según la pestaña activa */}
         {activeTab === "dashboard" && (
           <DashboardStats stats={stats} courses={courses} />
@@ -310,6 +337,11 @@ export default function AdminPanel({ user, onNavigate }) {
             onSubmit={editingCourse ? handleUpdateCourse : handleCreateCourse}
             onCancel={handleCancelEdit}
             isEditing={!!editingCourse}
+            onSuccess={() => {
+              const msg = editingCourse ? "Curso actualizado correctamente" : "Curso creado correctamente";
+              setSuccess(msg);
+              setTimeout(() => setSuccess(""), 4000);
+            }}
           />
         )}
 
